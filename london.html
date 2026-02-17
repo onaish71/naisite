@@ -5,7 +5,243 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>London & Liverpool Trip - Feb 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Archivo:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        // Live weather fetching
+        async function fetchWeather() {
+            try {
+                // Fetch London weather
+                const londonResponse = await fetch('https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=Europe/London&start_date=2026-02-20&end_date=2026-02-24');
+                const londonData = await londonResponse.json();
+                
+                // Fetch Liverpool weather  
+                const liverpoolResponse = await fetch('https://api.open-meteo.com/v1/forecast?latitude=53.4084&longitude=-2.9916&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=Europe/London&start_date=2026-02-23&end_date=2026-02-24');
+                const liverpoolData = await liverpoolResponse.json();
+                
+                // Weather code to emoji/description mapping
+                const weatherCodes = {
+                    0: { emoji: '☀️', desc: 'Clear sky' },
+                    1: { emoji: '🌤️', desc: 'Mainly clear' },
+                    2: { emoji: '⛅', desc: 'Partly cloudy' },
+                    3: { emoji: '☁️', desc: 'Overcast' },
+                    45: { emoji: '🌫️', desc: 'Foggy' },
+                    48: { emoji: '🌫️', desc: 'Foggy' },
+                    51: { emoji: '🌦️', desc: 'Light drizzle' },
+                    53: { emoji: '🌦️', desc: 'Drizzle' },
+                    55: { emoji: '🌧️', desc: 'Heavy drizzle' },
+                    61: { emoji: '🌧️', desc: 'Light rain' },
+                    63: { emoji: '🌧️', desc: 'Rain' },
+                    65: { emoji: '🌧️', desc: 'Heavy rain' },
+                    71: { emoji: '🌨️', desc: 'Light snow' },
+                    73: { emoji: '🌨️', desc: 'Snow' },
+                    75: { emoji: '🌨️', desc: 'Heavy snow' },
+                    77: { emoji: '🌨️', desc: 'Snow grains' },
+                    80: { emoji: '🌦️', desc: 'Light showers' },
+                    81: { emoji: '🌧️', desc: 'Showers' },
+                    82: { emoji: '🌧️', desc: 'Heavy showers' },
+                    85: { emoji: '🌨️', desc: 'Light snow showers' },
+                    86: { emoji: '🌨️', desc: 'Snow showers' },
+                    95: { emoji: '⛈️', desc: 'Thunderstorm' },
+                    96: { emoji: '⛈️', desc: 'Thunderstorm with hail' },
+                    99: { emoji: '⛈️', desc: 'Heavy thunderstorm' }
+                };
+                
+                const getWeatherInfo = (code) => weatherCodes[code] || { emoji: '🌤️', desc: 'Check forecast' };
+                
+                // Update Day 1 - Feb 20 (London)
+                const day1Weather = getWeatherInfo(londonData.daily.weathercode[0]);
+                document.getElementById('weather-day1').innerHTML = `
+                    <strong>🌤️ Weather:</strong> ${day1Weather.emoji} ${day1Weather.desc} | High ${Math.round(londonData.daily.temperature_2m_max[0])}°C, Low ${Math.round(londonData.daily.temperature_2m_min[0])}°C | ${londonData.daily.precipitation_probability_max[0]}% chance of precipitation
+                `;
+                
+                // Update Day 2 - Feb 21 (London)
+                const day2Weather = getWeatherInfo(londonData.daily.weathercode[1]);
+                document.getElementById('weather-day2').innerHTML = `
+                    <strong>🌤️ Weather:</strong> ${day2Weather.emoji} ${day2Weather.desc} | High ${Math.round(londonData.daily.temperature_2m_max[1])}°C, Low ${Math.round(londonData.daily.temperature_2m_min[1])}°C | ${londonData.daily.precipitation_probability_max[1]}% chance of precipitation
+                `;
+                
+                // Update Day 3 - Feb 22 (London)
+                const day3Weather = getWeatherInfo(londonData.daily.weathercode[2]);
+                document.getElementById('weather-day3').innerHTML = `
+                    <strong>🌤️ Weather:</strong> ${day3Weather.emoji} ${day3Weather.desc} | High ${Math.round(londonData.daily.temperature_2m_max[2])}°C, Low ${Math.round(londonData.daily.temperature_2m_min[2])}°C | ${londonData.daily.precipitation_probability_max[2]}% chance of precipitation
+                `;
+                
+                // Update Day 4 - Feb 23 (Liverpool)
+                const day4Weather = getWeatherInfo(liverpoolData.daily.weathercode[0]);
+                document.getElementById('weather-day4').innerHTML = `
+                    <strong>🌤️ Weather (Liverpool):</strong> ${day4Weather.emoji} ${day4Weather.desc} | High ${Math.round(liverpoolData.daily.temperature_2m_max[0])}°C, Low ${Math.round(liverpoolData.daily.temperature_2m_min[0])}°C | ${liverpoolData.daily.precipitation_probability_max[0]}% chance of precipitation
+                `;
+                
+                // Update Day 5 - Feb 24 (Liverpool/London)
+                const day5Weather = getWeatherInfo(liverpoolData.daily.weathercode[1]);
+                document.getElementById('weather-day5').innerHTML = `
+                    <strong>🌤️ Weather:</strong> ${day5Weather.emoji} ${day5Weather.desc} | High ${Math.round(liverpoolData.daily.temperature_2m_max[1])}°C, Low ${Math.round(liverpoolData.daily.temperature_2m_min[1])}°C | ${liverpoolData.daily.precipitation_probability_max[1]}% chance of precipitation
+                `;
+                
+            } catch (error) {
+                console.error('Error fetching weather:', error);
+            }
+        }
+        
+        // Fetch weather when page loads
+        window.addEventListener('DOMContentLoaded', fetchWeather);
+        
+        // Accordion functionality
+        function toggleAccordion(id) {
+            const content = document.getElementById(id);
+            const header = content.previousElementSibling;
+            const icon = header.querySelector('.accordion-icon');
+            
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                content.classList.remove('active');
+                icon.textContent = '+';
+            } else {
+                // Close all other accordions at the same level
+                const parent = content.parentElement.parentElement;
+                const siblings = parent.querySelectorAll('.accordion-content');
+                siblings.forEach(item => {
+                    if (item !== content && !item.closest('.accordion-inner')) {
+                        item.style.maxHeight = null;
+                        item.classList.remove('active');
+                    }
+                });
+                parent.querySelectorAll('.accordion-icon').forEach(item => {
+                    if (item !== icon) {
+                        item.textContent = '+';
+                    }
+                });
+                
+                // Open clicked accordion
+                content.style.maxHeight = content.scrollHeight + 500 + "px";
+                content.classList.add('active');
+                icon.textContent = '−';
+            }
+        }
+        
+        // Nested accordion functionality
+        function toggleNestedAccordion(id) {
+            const content = document.getElementById(id);
+            const header = content.previousElementSibling;
+            const icon = header.querySelector('.nested-accordion-icon');
+            
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                content.classList.remove('active');
+                icon.textContent = '▸';
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                content.classList.add('active');
+                icon.textContent = '▾';
+                
+                // Update parent accordion height
+                const parentAccordion = content.closest('.accordion-content');
+                if (parentAccordion) {
+                    parentAccordion.style.maxHeight = parentAccordion.scrollHeight + content.scrollHeight + "px";
+                }
+            }
+        }
+    </script>
     <style>
+        :root {
+            --navy: #1a2332;
+            --red: #c8102e;
+            --cream: #f8f5f0;
+            --gold: #d4af37;
+            --slate: #4a5568;
+            --border: #2d3748;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Archivo', sans-serif;
+            background: var(--cream);
+            color: var(--navy);
+            line-height: 1.6;
+        }
+
+        /* Accordion styles */
+        .accordion-header {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+        }
+        
+        .accordion-header:hover {
+            background: rgba(200, 16, 46, 0.05);
+        }
+        
+        .accordion-icon {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--red);
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .accordion-content.active {
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .accordion-inner {
+            padding: 1.5rem;
+        }
+        
+        /* Nested accordion styles */
+        .nested-accordion-header {
+            cursor: pointer;
+            user-select: none;
+            padding: 0.75rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.2s ease;
+        }
+        
+        .nested-accordion-header:hover {
+            background: rgba(200, 16, 46, 0.02);
+        }
+        
+        .nested-accordion-icon {
+            color: var(--red);
+            font-size: 1.2rem;
+            margin-left: 0.5rem;
+            flex-shrink: 0;
+        }
+        
+        .nested-accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .nested-accordion-inner {
+            padding: 1rem 0;
+        }
+        
+        .nested-title {
+            font-weight: 600;
+            color: var(--navy);
+        }
         :root {
             --navy: #1a2332;
             --red: #c8102e;
@@ -166,16 +402,9 @@
         /* Card styling */
         .card {
             background: white;
-            padding: 2rem;
             margin-bottom: 1.5rem;
             border-left: 4px solid var(--red);
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateX(8px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
 
         .card-header {
@@ -322,23 +551,28 @@
         <section class="section">
             <h2>✈️ Flights</h2>
             <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Outbound: Tel Aviv → London</div>
-                    <div class="card-meta">Friday, Feb 20</div>
+                <div class="accordion-header" onclick="toggleAccordion('flights-content')">
+                    <div>
+                        <div class="card-title">Flight Details</div>
+                        <div class="card-meta">Tel Aviv ↔ London</div>
+                    </div>
+                    <span class="accordion-icon">+</span>
                 </div>
-                <div class="card-content">
-                    <p><strong>Departure:</strong> Tel Aviv Yafo - 09:10</p>
-                    <p><strong>Arrival:</strong> London - 12:35</p>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Return: London → Tel Aviv</div>
-                    <div class="card-meta">Tuesday, Mar 24</div>
-                </div>
-                <div class="card-content">
-                    <p><strong>Departure:</strong> London - 16:10</p>
-                    <p><strong>Arrival:</strong> Tel Aviv Yafo - 22:45</p>
+                <div id="flights-content" class="accordion-content">
+                    <div class="accordion-inner">
+                        <div style="padding: 1rem; background: #f7fafc; margin-bottom: 1rem; border-left: 3px solid var(--gold);">
+                            <strong>Outbound: Tel Aviv → London</strong><br>
+                            <strong>Date:</strong> Friday, February 20, 2026<br>
+                            <strong>Departure:</strong> Tel Aviv Yafo - 09:10<br>
+                            <strong>Arrival:</strong> London - 12:35
+                        </div>
+                        <div style="padding: 1rem; background: #f7fafc; border-left: 3px solid var(--gold);">
+                            <strong>Return: London → Tel Aviv</strong><br>
+                            <strong>Date:</strong> Tuesday, February 24, 2026<br>
+                            <strong>Departure:</strong> London - 16:10<br>
+                            <strong>Arrival:</strong> Tel Aviv Yafo - 22:45
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -349,171 +583,283 @@
             
             <!-- DAY 1: FRIDAY FEB 20 -->
             <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Day 1 - Friday, February 20</div>
-                    <div class="card-meta">Arrival Day</div>
-                </div>
-                <div class="card-content">
-                    <div style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
-                        <strong>🌤️ Weather:</strong> High 10°C (50°F) | 20% chance of snow - Cool and mostly dry
+                <div class="accordion-header" onclick="toggleAccordion('day1-content')">
+                    <div>
+                        <div class="card-title">Day 1 - Friday, February 20</div>
+                        <div class="card-meta">Arrival Day</div>
                     </div>
-                    
-                    <ul class="activity-list">
-                        <li><strong>09:10</strong> - Depart Tel Aviv</li>
-                        <li><strong>12:35</strong> - Arrive London</li>
-                        <li><strong>Afternoon</strong> - Check-in at citizenM Shoreditch</li>
-                        <li><strong>Evening</strong> - Explore Shoreditch area, grab dinner</li>
-                    </ul>
+                    <span class="accordion-icon">+</span>
+                </div>
+                <div id="day1-content" class="accordion-content">
+                    <div class="accordion-inner">
+                        <div id="weather-day1" style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
+                            <strong>🌤️ Weather:</strong> Loading live forecast...
+                        </div>
+                        
+                        <ul class="activity-list">
+                            <li><strong>09:10</strong> - Depart Tel Aviv</li>
+                            <li><strong>12:35</strong> - Arrive London</li>
+                            <li><strong>Afternoon</strong> - Check-in at citizenM Shoreditch</li>
+                            <li><strong>Evening</strong> - Explore Shoreditch area, grab dinner</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
             <!-- DAY 2: SATURDAY FEB 21 -->
             <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Day 2 - Saturday, February 21</div>
-                    <div class="card-meta">Chelsea Match Day</div>
+                <div class="accordion-header" onclick="toggleAccordion('day2-content')">
+                    <div>
+                        <div class="card-title">Day 2 - Saturday, February 21 ⚽</div>
+                        <div class="card-meta">Chelsea vs Burnley • 15:00</div>
+                    </div>
+                    <span class="accordion-icon">+</span>
                 </div>
-                <div class="card-content">
-                    <div style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
-                        <strong>🌤️ Weather:</strong> Check forecast closer to date - Pack rain jacket if needed
-                    </div>
+                <div id="day2-content" class="accordion-content">
+                    <div class="accordion-inner">
+                        <div id="weather-day2" style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
+                            <strong>🌤️ Weather:</strong> Loading live forecast...
+                        </div>
 
-                    <div style="padding: 1rem; background: #fef2f2; border: 2px solid var(--red); margin-bottom: 1rem; border-radius: 4px;">
-                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">⚽ Chelsea vs Burnley</div>
-                        <p><strong>Kick-off:</strong> 15:00 (3:00 PM)</p>
-                        <p><strong>Venue:</strong> Stamford Bridge, London</p>
-                        <p><strong>Status:</strong> ✅ Tickets confirmed</p>
-                    </div>
+                        <!-- Match Details - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day2-match')">
+                            <span class="nested-title">⚽ 15:00 - Chelsea vs Burnley</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day2-match" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <div style="padding: 1rem; background: #fef2f2; border: 2px solid var(--red); border-radius: 4px;">
+                                    <p><strong>Venue:</strong> Stamford Bridge, London</p>
+                                    <p><strong>Status:</strong> ✅ Tickets confirmed</p>
+                                </div>
+                            </div>
+                        </div>
 
-                    <div style="padding: 0.75rem; background: #f7fafc; border-left: 3px solid var(--gold); margin-bottom: 1rem;">
-                        <strong>🚇 Commute from citizenM Shoreditch (45 min):</strong><br><br>
-                        <strong>To Stadium:</strong><br>
-                        • Walk to Liverpool Street station (5 min)<br>
-                        • Take Circle/District Line westbound to Fulham Broadway (35 min)<br>
-                        • Walk to Stamford Bridge (5 min)<br>
-                        <strong>🕐 Leave hotel by 1:30 PM</strong> to arrive by 2:15 PM<br><br>
-                        <strong>Return Journey:</strong><br>
-                        • Same route in reverse<br>
-                        • Expect crowds post-match - consider waiting 15-20 min
-                    </div>
+                        <!-- Commute Details - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day2-commute')">
+                            <span class="nested-title">🚇 Commute Instructions</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day2-commute" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <div style="padding: 0.75rem; background: #f7fafc; border-left: 3px solid var(--gold);">
+                                    <strong>From citizenM Shoreditch (45 min):</strong><br><br>
+                                    <strong>To Stadium:</strong><br>
+                                    • Walk to Liverpool Street station (5 min)<br>
+                                    • Take Circle/District Line westbound to Fulham Broadway (35 min)<br>
+                                    • Walk to Stamford Bridge (5 min)<br>
+                                    <strong>🕐 Leave hotel by 1:30 PM</strong> to arrive by 2:15 PM<br><br>
+                                    <strong>Return Journey:</strong><br>
+                                    • Same route in reverse<br>
+                                    • Expect crowds post-match - consider waiting 15-20 min
+                                </div>
+                            </div>
+                        </div>
 
-                    <strong>Schedule:</strong>
-                    <ul class="activity-list">
-                        <li><strong>Morning</strong> - Free time (explore London, brunch)</li>
-                        <li><strong>13:30</strong> - Leave hotel for Stamford Bridge</li>
-                        <li><strong>15:00</strong> - Chelsea vs Burnley kick-off</li>
-                        <li><strong>Evening</strong> - Dinner in Chelsea or back to Shoreditch</li>
-                    </ul>
+                        <!-- Full Schedule - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day2-schedule')">
+                            <span class="nested-title">📋 Full Day Schedule</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day2-schedule" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <ul class="activity-list">
+                                    <li><strong>Morning</strong> - Free time (explore London, brunch)</li>
+                                    <li><strong>13:30</strong> - Leave hotel for Stamford Bridge</li>
+                                    <li><strong>15:00</strong> - Chelsea vs Burnley kick-off</li>
+                                    <li><strong>Evening</strong> - Dinner in Chelsea or back to Shoreditch</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- DAY 3: SUNDAY FEB 22 -->
             <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Day 3 - Sunday, February 22</div>
-                    <div class="card-meta">North London Derby! 🔥</div>
+                <div class="accordion-header" onclick="toggleAccordion('day3-content')">
+                    <div>
+                        <div class="card-title">Day 3 - Sunday, February 22 ⚽🔥</div>
+                        <div class="card-meta">Tottenham vs Arsenal • 16:30 • DERBY!</div>
+                    </div>
+                    <span class="accordion-icon">+</span>
                 </div>
-                <div class="card-content">
-                    <div style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
-                        <strong>🌤️ Weather:</strong> Check forecast closer to date - Derby weather won't stop the atmosphere!
-                    </div>
+                <div id="day3-content" class="accordion-content">
+                    <div class="accordion-inner">
+                        <!-- Weather (always visible when day is expanded) -->
+                        <div id="weather-day3" style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
+                            <strong>🌤️ Weather:</strong> Loading live forecast...
+                        </div>
 
-                    <div style="padding: 1rem; background: #fef2f2; border: 2px solid var(--red); margin-bottom: 1rem; border-radius: 4px;">
-                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">⚽ Tottenham Hotspur vs Arsenal</div>
-                        <p><strong>Kick-off:</strong> 16:30 (4:30 PM)</p>
-                        <p><strong>Venue:</strong> Tottenham Hotspur Stadium, London</p>
-                        <p><strong>Status:</strong> ✅ Tickets confirmed</p>
-                        <p style="color: var(--red); font-weight: 600; margin-top: 0.5rem;">⚡ NORTH LONDON DERBY - Expect electric atmosphere!</p>
-                    </div>
+                        <!-- Match Details - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day3-match')">
+                            <span class="nested-title">⚽ 16:30 - Tottenham vs Arsenal (North London Derby)</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day3-match" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <div style="padding: 1rem; background: #fef2f2; border: 2px solid var(--red); margin-bottom: 1rem; border-radius: 4px;">
+                                    <p><strong>Venue:</strong> Tottenham Hotspur Stadium, London</p>
+                                    <p><strong>Status:</strong> ✅ Tickets confirmed</p>
+                                    <p style="color: var(--red); font-weight: 600; margin-top: 0.5rem;">⚡ NORTH LONDON DERBY - Expect electric atmosphere!</p>
+                                </div>
+                            </div>
+                        </div>
 
-                    <div style="padding: 0.75rem; background: #f7fafc; border-left: 3px solid var(--gold); margin-bottom: 1rem;">
-                        <strong>🚇 Commute from citizenM Shoreditch (30 min):</strong><br><br>
-                        <strong>To Stadium:</strong><br>
-                        • Walk to Old Street station (8 min)<br>
-                        • Take Northern Line northbound to Seven Sisters (15 min)<br>
-                        • Walk or bus 149 to stadium (7 min walk / 5 min bus)<br>
-                        <strong>🕐 Leave hotel by 3:15 PM</strong> to arrive by 3:45 PM<br><br>
-                        <strong>Alternative route (35 min):</strong><br>
-                        • Liverpool Street → Tottenham Hale (Overground)<br>
-                        • Then bus or 15 min walk to stadium<br><br>
-                        <strong>Return Journey:</strong><br>
-                        • Same route in reverse<br>
-                        • ⚠️ Derby day = MAJOR crowds! Allow 30+ min post-match<br>
-                        • Consider grabbing a pint nearby and waiting out the rush
-                    </div>
+                        <!-- Commute Details - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day3-commute')">
+                            <span class="nested-title">🚇 Commute Instructions</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day3-commute" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <div style="padding: 0.75rem; background: #f7fafc; border-left: 3px solid var(--gold);">
+                                    <strong>From citizenM Shoreditch (30 min):</strong><br><br>
+                                    <strong>To Stadium:</strong><br>
+                                    • Walk to Old Street station (8 min)<br>
+                                    • Take Northern Line northbound to Seven Sisters (15 min)<br>
+                                    • Walk or bus 149 to stadium (7 min walk / 5 min bus)<br>
+                                    <strong>🕐 Leave hotel by 3:15 PM</strong> to arrive by 3:45 PM<br><br>
+                                    <strong>Alternative route (35 min):</strong><br>
+                                    • Liverpool Street → Tottenham Hale (Overground)<br>
+                                    • Then bus or 15 min walk to stadium<br><br>
+                                    <strong>Return Journey:</strong><br>
+                                    • Same route in reverse<br>
+                                    • ⚠️ Derby day = MAJOR crowds! Allow 30+ min post-match<br>
+                                    • Consider grabbing a pint nearby and waiting out the rush
+                                </div>
+                            </div>
+                        </div>
 
-                    <strong>Schedule:</strong>
-                    <ul class="activity-list">
-                        <li><strong>Morning</strong> - Leisure time in London</li>
-                        <li><strong>15:15</strong> - Leave hotel for Tottenham Stadium</li>
-                        <li><strong>16:30</strong> - Tottenham vs Arsenal kick-off</li>
-                        <li><strong>Evening</strong> - Post-match celebrations!</li>
-                    </ul>
+                        <!-- Full Schedule - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day3-schedule')">
+                            <span class="nested-title">📋 Full Day Schedule</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day3-schedule" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <ul class="activity-list">
+                                    <li><strong>Morning</strong> - Leisure time in London</li>
+                                    <li><strong>15:15</strong> - Leave hotel for Tottenham Stadium</li>
+                                    <li><strong>16:30</strong> - Tottenham vs Arsenal kick-off</li>
+                                    <li><strong>Evening</strong> - Post-match celebrations!</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- DAY 4: MONDAY FEB 23 -->
             <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Day 4 - Monday, February 23</div>
-                    <div class="card-meta">Travel to Liverpool</div>
+                <div class="accordion-header" onclick="toggleAccordion('day4-content')">
+                    <div>
+                        <div class="card-title">Day 4 - Monday, February 23 ⚽</div>
+                        <div class="card-meta">Travel to Liverpool • Everton vs Man Utd • 20:00</div>
+                    </div>
+                    <span class="accordion-icon">+</span>
                 </div>
-                <div class="card-content">
-                    <div style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
-                        <strong>🌤️ Weather (Liverpool):</strong> Check forecast - Liverpool can be windier, bring extra layer
-                    </div>
+                <div id="day4-content" class="accordion-content">
+                    <div class="accordion-inner">
+                        <div id="weather-day4" style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
+                            <strong>🌤️ Weather (Liverpool):</strong> Loading live forecast...
+                        </div>
 
-                    <div style="padding: 1rem; background: #fef2f2; border: 2px solid var(--red); margin-bottom: 1rem; border-radius: 4px;">
-                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">⚽ Everton vs Manchester United</div>
-                        <p><strong>Kick-off:</strong> 20:00 (8:00 PM)</p>
-                        <p><strong>Venue:</strong> Hill Dickinson Stadium, Liverpool</p>
-                        <p><strong>Status:</strong> ✅ Tickets confirmed</p>
-                    </div>
+                        <!-- Match Details - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-match')">
+                            <span class="nested-title">⚽ 20:00 - Everton vs Manchester United</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day4-match" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <div style="padding: 1rem; background: #fef2f2; border: 2px solid var(--red); border-radius: 4px;">
+                                    <p><strong>Venue:</strong> Hill Dickinson Stadium, Liverpool</p>
+                                    <p><strong>Status:</strong> ✅ Tickets confirmed</p>
+                                </div>
+                            </div>
+                        </div>
 
-                    <div style="padding: 0.75rem; background: #fff3cd; border-left: 3px solid #f59e0b; margin-bottom: 1rem;">
-                        <strong>🚄 Train to Liverpool:</strong><br>
-                        • Route: London Euston → Liverpool Lime Street (2.5 hours)<br>
-                        • ⚠️ Book train tickets via Action Items below<br>
-                        • Suggested: Morning/early afternoon train to explore Liverpool before match
-                    </div>
+                        <!-- Hotel Details - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-hotel')">
+                            <span class="nested-title">🏨 Pullman Liverpool Hotel</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day4-hotel" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <div style="padding: 0.75rem; background: #f7fafc; border-left: 3px solid var(--gold);">
+                                    <strong>Pullman Liverpool</strong><br>
+                                    Kings Dock, Liverpool, L3 4FP, United Kingdom<br>
+                                    Check-in: Feb 23 | Check-out: Feb 24
+                                </div>
+                            </div>
+                        </div>
 
-                    <strong>Schedule:</strong>
-                    <ul class="activity-list">
-                        <li><strong>Morning</strong> - Check out from citizenM Shoreditch</li>
-                        <li><strong>Daytime</strong> - Train to Liverpool (book via Action Items)</li>
-                        <li><strong>Afternoon</strong> - Check into Liverpool hotel, explore city</li>
-                        <li><strong>20:00</strong> - Everton vs Manchester United kick-off</li>
-                        <li><strong>Night</strong> - Stay in Liverpool (book hotel via Action Items)</li>
-                    </ul>
+                        <!-- Train Details - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-train')">
+                            <span class="nested-title">🚄 Train to Liverpool</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day4-train" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <div style="padding: 0.75rem; background: #fff3cd; border-left: 3px solid #f59e0b;">
+                                    <strong>Route:</strong> London Euston → Liverpool Lime Street (2.5 hours)<br>
+                                    ⚠️ Book train tickets via Action Items below<br>
+                                    <strong>Suggested:</strong> Morning/early afternoon train to explore Liverpool before match
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Full Schedule - Collapsible -->
+                        <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-schedule')">
+                            <span class="nested-title">📋 Full Day Schedule</span>
+                            <span class="nested-accordion-icon">▸</span>
+                        </div>
+                        <div id="day4-schedule" class="nested-accordion-content">
+                            <div class="nested-accordion-inner">
+                                <ul class="activity-list">
+                                    <li><strong>Morning</strong> - Check out from citizenM Shoreditch</li>
+                                    <li><strong>Daytime</strong> - Train to Liverpool (book via Action Items)</li>
+                                    <li><strong>Afternoon</strong> - Check into Pullman Liverpool, explore city center & Albert Dock</li>
+                                    <li><strong>20:00</strong> - Everton vs Manchester United kick-off</li>
+                                    <li><strong>Night</strong> - Stay at Pullman Liverpool</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- DAY 5: TUESDAY FEB 24 -->
             <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Day 5 - Tuesday, February 24</div>
-                    <div class="card-meta">Return Home</div>
+                <div class="accordion-header" onclick="toggleAccordion('day5-content')">
+                    <div>
+                        <div class="card-title">Day 5 - Tuesday, February 24</div>
+                        <div class="card-meta">Return Home • Flight 16:10</div>
+                    </div>
+                    <span class="accordion-icon">+</span>
                 </div>
-                <div class="card-content">
-                    <div style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
-                        <strong>🌤️ Weather:</strong> Check forecast for appropriate travel clothing
-                    </div>
+                <div id="day5-content" class="accordion-content">
+                    <div class="accordion-inner">
+                        <div id="weather-day5" style="padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; margin-bottom: 1rem;">
+                            <strong>🌤️ Weather:</strong> Loading live forecast...
+                        </div>
 
-                    <div style="padding: 0.75rem; background: #fff3cd; border-left: 3px solid #f59e0b; margin-bottom: 1rem;">
-                        <strong>🚄 Train to London Heathrow:</strong><br>
-                        • Liverpool Lime Street → London Euston (2.5 hours)<br>
-                        • Euston → Heathrow (Tube/Elizabeth Line, 1 hour)<br>
-                        • ⚠️ Book train tickets via Action Items below<br>
-                        • Allow 3-4 hours total travel time to be safe
-                    </div>
+                        <div style="padding: 0.75rem; background: #fff3cd; border-left: 3px solid #f59e0b; margin-bottom: 1rem;">
+                            <strong>🚄 Train to London Heathrow:</strong><br>
+                            • Liverpool Lime Street → London Euston (2.5 hours)<br>
+                            • Euston → Heathrow (Tube/Elizabeth Line, 1 hour)<br>
+                            • ⚠️ Book train tickets via Action Items below<br>
+                            • Allow 3-4 hours total travel time to be safe
+                        </div>
 
-                    <strong>Schedule:</strong>
-                    <ul class="activity-list">
-                        <li><strong>Morning</strong> - Check out from Liverpool hotel</li>
-                        <li><strong>~12:00</strong> - Train from Liverpool to London (timing depends on booking)</li>
-                        <li><strong>16:10</strong> - Depart London Heathrow for Tel Aviv</li>
-                        <li><strong>22:45</strong> - Arrive Tel Aviv</li>
-                    </ul>
+                        <strong>Schedule:</strong>
+                        <ul class="activity-list">
+                            <li><strong>Morning</strong> - Check out from Pullman Liverpool</li>
+                            <li><strong>~12:00</strong> - Train from Liverpool to London (timing depends on booking)</li>
+                            <li><strong>16:10</strong> - Depart London Heathrow for Tel Aviv</li>
+                            <li><strong>22:45</strong> - Arrive Tel Aviv</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </section>
@@ -524,7 +870,6 @@
             <div class="card" style="border-left: 4px solid #f59e0b;">
                 <div class="card-content">
                     <ul class="activity-list">
-                        <li><strong>Book hotel in Liverpool</strong> for night of Feb 23-24 (near Lime Street station recommended)</li>
                         <li><strong>Book train tickets:</strong> London Euston to Liverpool Lime Street on Feb 23 (morning/early afternoon)</li>
                         <li><strong>Book train tickets:</strong> Liverpool Lime Street to London on Feb 24 (arrive with plenty of time for 16:10 flight)</li>
                     </ul>
