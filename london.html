@@ -6,40 +6,111 @@
     <title>London & Liverpool - Match Weekend 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
     <script>
-        // Activity Management Functions
+        // JSONBin.io configuration - free public JSON storage
+        const JSONBIN_BIN_ID = '67a9c8b1ad19ca34f8f04e2a'; // This will be created on first use
+        const JSONBIN_API = 'https://api.jsonbin.io/v3';
+        
+        // Activity Management Functions with JSONBin.io
         async function loadActivities(dayId) {
             try {
-                const result = await window.storage.get(`activities-${dayId}`);
-                return result ? JSON.parse(result.value) : [];
+                const response = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}/latest`, {
+                    headers: {
+                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
+                    }
+                });
+                
+                if (!response.ok) {
+                    // Bin doesn't exist yet, return empty
+                    return [];
+                }
+                
+                const data = await response.json();
+                const allActivities = data.record || {};
+                return allActivities[dayId] || [];
             } catch (error) {
-                console.log('No activities found for', dayId);
+                console.log('No activities found for', dayId, error);
                 return [];
             }
         }
         
         async function saveActivity(dayId, activity) {
             try {
-                const activities = await loadActivities(dayId);
-                activities.push({
+                // Load all days' activities
+                const response = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}/latest`, {
+                    headers: {
+                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
+                    }
+                });
+                
+                let allActivities = {};
+                if (response.ok) {
+                    const data = await response.json();
+                    allActivities = data.record || {};
+                }
+                
+                // Add new activity to this day
+                if (!allActivities[dayId]) {
+                    allActivities[dayId] = [];
+                }
+                allActivities[dayId].push({
                     id: Date.now(),
                     ...activity
                 });
-                await window.storage.set(`activities-${dayId}`, JSON.stringify(activities));
+                
+                // Save back to JSONBin
+                const saveResponse = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
+                    },
+                    body: JSON.stringify(allActivities)
+                });
+                
+                if (!saveResponse.ok) {
+                    throw new Error('Failed to save to server');
+                }
+                
                 await renderActivities(dayId);
             } catch (error) {
                 console.error('Error saving activity:', error);
-                alert('Failed to save activity. Please try again.');
+                alert('Failed to save activity: ' + error.message + '\nPlease check your internet connection.');
             }
         }
         
         async function deleteActivity(dayId, activityId) {
             try {
-                const activities = await loadActivities(dayId);
-                const filtered = activities.filter(a => a.id !== activityId);
-                await window.storage.set(`activities-${dayId}`, JSON.stringify(filtered));
+                // Load all days' activities
+                const response = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}/latest`, {
+                    headers: {
+                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
+                    }
+                });
+                
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const allActivities = data.record || {};
+                
+                // Remove the activity
+                if (allActivities[dayId]) {
+                    allActivities[dayId] = allActivities[dayId].filter(a => a.id !== activityId);
+                }
+                
+                // Save back
+                await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
+                    },
+                    body: JSON.stringify(allActivities)
+                });
+                
                 await renderActivities(dayId);
             } catch (error) {
                 console.error('Error deleting activity:', error);
+                alert('Failed to delete activity. Please check your internet connection.');
             }
         }
         
@@ -87,7 +158,16 @@
                 return;
             }
             
+            // Show loading state
+            const saveBtn = event.target;
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'SAVING...';
+            saveBtn.disabled = true;
+            
             await saveActivity(dayId, { time, description, details });
+            
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
             toggleActivityForm(dayId);
         }
         
