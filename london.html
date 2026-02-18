@@ -6,6 +6,98 @@
     <title>London & Liverpool - Match Weekend 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
     <script>
+        // Activity Management Functions
+        async function loadActivities(dayId) {
+            try {
+                const result = await window.storage.get(`activities-${dayId}`);
+                return result ? JSON.parse(result.value) : [];
+            } catch (error) {
+                console.log('No activities found for', dayId);
+                return [];
+            }
+        }
+        
+        async function saveActivity(dayId, activity) {
+            try {
+                const activities = await loadActivities(dayId);
+                activities.push({
+                    id: Date.now(),
+                    ...activity
+                });
+                await window.storage.set(`activities-${dayId}`, JSON.stringify(activities));
+                await renderActivities(dayId);
+            } catch (error) {
+                console.error('Error saving activity:', error);
+                alert('Failed to save activity. Please try again.');
+            }
+        }
+        
+        async function deleteActivity(dayId, activityId) {
+            try {
+                const activities = await loadActivities(dayId);
+                const filtered = activities.filter(a => a.id !== activityId);
+                await window.storage.set(`activities-${dayId}`, JSON.stringify(filtered));
+                await renderActivities(dayId);
+            } catch (error) {
+                console.error('Error deleting activity:', error);
+            }
+        }
+        
+        async function renderActivities(dayId) {
+            const container = document.getElementById(`activities-${dayId}`);
+            if (!container) return;
+            
+            const activities = await loadActivities(dayId);
+            
+            if (activities.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = activities.map(activity => `
+                <div class="custom-activity">
+                    <button class="activity-delete" onclick="deleteActivity('${dayId}', ${activity.id})">✕</button>
+                    <div><span class="activity-time">${activity.time}</span> — ${activity.description}</div>
+                    ${activity.details ? `<div class="activity-details">${activity.details}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function toggleActivityForm(dayId) {
+            const form = document.getElementById(`form-${dayId}`);
+            form.classList.toggle('active');
+            
+            if (form.classList.contains('active')) {
+                document.getElementById(`time-${dayId}`).focus();
+            } else {
+                // Reset form
+                document.getElementById(`time-${dayId}`).value = '';
+                document.getElementById(`desc-${dayId}`).value = '';
+                document.getElementById(`details-${dayId}`).value = '';
+            }
+        }
+        
+        async function submitActivity(dayId) {
+            const time = document.getElementById(`time-${dayId}`).value.trim();
+            const description = document.getElementById(`desc-${dayId}`).value.trim();
+            const details = document.getElementById(`details-${dayId}`).value.trim();
+            
+            if (!time || !description) {
+                alert('Time and Description are required!');
+                return;
+            }
+            
+            await saveActivity(dayId, { time, description, details });
+            toggleActivityForm(dayId);
+        }
+        
+        // Load all activities on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            ['day1', 'day2', 'day3', 'day4', 'day5'].forEach(dayId => {
+                renderActivities(dayId);
+            });
+        });
+
         // Live weather fetching
         async function fetchWeather() {
             try {
@@ -282,6 +374,136 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+        
+        /* Add Activity styles */
+        .add-activity-btn {
+            background: #ff0000;
+            color: #fff;
+            border: 3px solid #000;
+            padding: 0.75rem 1.5rem;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+        
+        .add-activity-btn:hover {
+            background: #000;
+            color: #ff0000;
+        }
+        
+        .activity-form {
+            display: none;
+            background: #f9f9f9;
+            border: 3px solid #000;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .activity-form.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #000;
+            font-family: 'Courier Prime', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .form-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .btn-save, .btn-cancel {
+            flex: 1;
+            padding: 0.75rem;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            border: 3px solid #000;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-save {
+            background: #000;
+            color: #fff;
+        }
+        
+        .btn-save:hover {
+            background: #ff0000;
+        }
+        
+        .btn-cancel {
+            background: #fff;
+            color: #000;
+        }
+        
+        .btn-cancel:hover {
+            background: #f0f0f0;
+        }
+        
+        .custom-activity {
+            background: #fffacd;
+            border: 3px dashed #ff0000;
+            padding: 1rem 3rem 1rem 1rem;
+            margin: 0.5rem 0;
+            position: relative;
+        }
+        
+        .activity-delete {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #ff0000;
+            color: #fff;
+            border: 2px solid #000;
+            padding: 0.25rem 0.5rem;
+            font-family: 'Courier Prime', monospace;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .activity-delete:hover {
+            background: #000;
+        }
+        
+        .activity-time {
+            font-weight: 700;
+            color: #ff0000;
+        }
+        
+        .activity-details {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            padding-left: 1rem;
+            border-left: 3px solid #ff0000;
+        }
 
         .nested-icon {
             font-size: 1.5rem;
@@ -399,10 +621,10 @@
                     <div class="weather-box" id="weather-day1">Loading weather...</div>
                     
                     <ul>
-                        <li><strong>09:10</strong> — Depart Tel Aviv Yafo</li>
-                        <li><strong>12:35</strong> — Arrive London</li>
+                        <li><strong>09:10 Israel Time</strong> — Depart Tel Aviv Yafo</li>
+                        <li><strong>12:35 UK Time</strong> — Arrive London</li>
                         <li>
-                            <strong>AFTERNOON</strong> — Check-in citizenM Shoreditch
+                            <strong>AFTERNOON (UK Time)</strong> — Check-in citizenM Shoreditch
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day1-hotel')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">🏨 HOTEL DETAILS</span>
                                 <span class="nested-icon">▸</span>
@@ -432,6 +654,47 @@
                         </li>
                         <li><strong>EVENING</strong> — Explore Shoreditch area</li>
                     </ul>
+                    
+                    <!-- Custom Activities Container -->
+                    <div id="activities-day1"></div>
+                    
+                    <!-- Add Activity Button & Form -->
+                    <button class="add-activity-btn" onclick="toggleActivityForm('day1')">+ ADD ACTIVITY</button>
+                    <div id="form-day1" class="activity-form">
+                        <div class="form-group">
+                            <label class="form-label">Time (Required)</label>
+                            <input type="text" id="time-day1" class="form-input" placeholder="e.g. 18:00 or EVENING">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (Required)</label>
+                            <input type="text" id="desc-day1" class="form-input" placeholder="e.g. Dinner at Dishoom Shoreditch">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Details (Optional)</label>
+                            <textarea id="details-day1" class="form-textarea" placeholder="Additional notes, address, booking info..."></textarea>
+                        </div>
+                        <div class="form-buttons">
+                            <button class="btn-save" onclick="submitActivity('day1')">SAVE</button>
+                            <button class="btn-cancel" onclick="toggleActivityForm('day1')">CANCEL</button>
+                        </div>
+                    </div>
+                    
+                    <div class="nested-accordion-header" onclick="toggleNestedAccordion('day1-suggestions')" style="margin-top: 1.5rem;">
+                        <span class="nested-title">💡 IDEAS FOR ACTIVITY</span>
+                        <span class="nested-icon">▸</span>
+                    </div>
+                    <div id="day1-suggestions" class="nested-accordion-content">
+                        <div class="nested-inner">
+                            <div style="padding: 1rem; background: #fff3cd; border-left: 3px solid #f59e0b;">
+                                <strong>NEARBY TO EXPLORE:</strong><br><br>
+                                • <strong>Brick Lane</strong> - Famous curry houses, vintage shops (5 min walk)<br>
+                                • <strong>Old Spitalfields Market</strong> - Indoor market, food stalls (10 min walk)<br>
+                                • <strong>BOXPARK Shoreditch</strong> - Street food from 50+ vendors<br>
+                                • <strong>Nightjar</strong> - 1920s speakeasy bar with live music<br>
+                                • <strong>Street art tour</strong> - Shoreditch is famous for murals
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -450,9 +713,9 @@
                     <div class="weather-box" id="weather-day2">Loading weather...</div>
 
                     <ul>
-                        <li><strong>MORNING</strong> — Free time / brunch</li>
+                        <li><strong>MORNING (UK Time)</strong> — Free time / brunch</li>
                         <li>
-                            <strong>13:30</strong> — Leave hotel for stadium
+                            <strong>13:30 UK Time</strong> — Leave hotel for stadium
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day2-commute')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">🚇 COMMUTE PLAN</span>
                                 <span class="nested-icon">▸</span>
@@ -470,9 +733,9 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>14:00</strong> — Arrive Stamford Bridge area</li>
+                        <li><strong>14:00 UK Time</strong> — Arrive Stamford Bridge area</li>
                         <li>
-                            <strong>15:00</strong> — ⚽ KICK OFF
+                            <strong>15:00 UK Time</strong> — ⚽ KICK OFF
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day2-match')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">⚽ MATCH DETAILS</span>
                                 <span class="nested-icon">▸</span>
@@ -497,9 +760,51 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>~17:00</strong> — Match ends, commute back</li>
-                        <li><strong>EVENING</strong> — Dinner Chelsea/Shoreditch</li>
+                        <li><strong>~17:00 UK Time</strong> — Match ends, commute back</li>
+                        <li><strong>EVENING (UK Time)</strong> — Dinner Chelsea/Shoreditch</li>
                     </ul>
+                    
+                    <!-- Custom Activities Container -->
+                    <div id="activities-day2"></div>
+                    
+                    <!-- Add Activity Button & Form -->
+                    <button class="add-activity-btn" onclick="toggleActivityForm('day2')">+ ADD ACTIVITY</button>
+                    <div id="form-day2" class="activity-form">
+                        <div class="form-group">
+                            <label class="form-label">Time (Required)</label>
+                            <input type="text" id="time-day2" class="form-input" placeholder="e.g. 10:00 or MORNING">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (Required)</label>
+                            <input type="text" id="desc-day2" class="form-input" placeholder="e.g. Brunch at Borough Market">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Details (Optional)</label>
+                            <textarea id="details-day2" class="form-textarea" placeholder="Additional notes, address, booking info..."></textarea>
+                        </div>
+                        <div class="form-buttons">
+                            <button class="btn-save" onclick="submitActivity('day2')">SAVE</button>
+                            <button class="btn-cancel" onclick="toggleActivityForm('day2')">CANCEL</button>
+                        </div>
+                    </div>
+                    
+                    <div class="nested-accordion-header" onclick="toggleNestedAccordion('day2-suggestions')" style="margin-top: 1.5rem;">
+                        <span class="nested-title">💡 IDEAS FOR ACTIVITY</span>
+                        <span class="nested-icon">▸</span>
+                    </div>
+                    <div id="day2-suggestions" class="nested-accordion-content">
+                        <div class="nested-inner">
+                            <div style="padding: 1rem; background: #fff3cd; border-left: 3px solid #f59e0b;">
+                                <strong>MORNING OPTIONS:</strong><br>
+                                • <strong>Tate Modern</strong> - Free collection + Theatre Picasso exhibition<br>
+                                • <strong>South Bank walk</strong> - Thames riverside stroll<br>
+                                • <strong>Borough Market</strong> - Famous food market<br><br>
+                                <strong>POST-MATCH (EVENING):</strong><br>
+                                • <strong>Chelsea area</strong> - Upscale dining near stadium<br>
+                                • Return to Shoreditch for casual dinner & nightlife
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -518,9 +823,9 @@
                     <div class="weather-box" id="weather-day3">Loading weather...</div>
 
                     <ul>
-                        <li><strong>MORNING</strong> — Leisure time in London</li>
+                        <li><strong>MORNING (UK Time)</strong> — Leisure time in London</li>
                         <li>
-                            <strong>15:15</strong> — Leave hotel for stadium
+                            <strong>15:15 UK Time</strong> — Leave hotel for stadium
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day3-commute')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">🚇 COMMUTE PLAN</span>
                                 <span class="nested-icon">▸</span>
@@ -553,9 +858,9 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>15:45</strong> — Arrive Tottenham stadium area</li>
+                        <li><strong>15:45 UK Time</strong> — Arrive Tottenham stadium area</li>
                         <li>
-                            <strong>16:30</strong> — ⚽ KICK OFF (North London Derby)
+                            <strong>16:30 UK Time</strong> — ⚽ KICK OFF (North London Derby)
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day3-match')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">⚽ MATCH DETAILS</span>
                                 <span class="nested-icon">▸</span>
@@ -581,9 +886,53 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>~18:30</strong> — Match ends, navigate crowds</li>
-                        <li><strong>EVENING</strong> — Post-match celebrations</li>
+                        <li><strong>~18:30 UK Time</strong> — Match ends, navigate crowds</li>
+                        <li><strong>EVENING (UK Time)</strong> — Post-match celebrations</li>
                     </ul>
+                    
+                    <!-- Custom Activities Container -->
+                    <div id="activities-day3"></div>
+                    
+                    <!-- Add Activity Button & Form -->
+                    <button class="add-activity-btn" onclick="toggleActivityForm('day3')">+ ADD ACTIVITY</button>
+                    <div id="form-day3" class="activity-form">
+                        <div class="form-group">
+                            <label class="form-label">Time (Required)</label>
+                            <input type="text" id="time-day3" class="form-input" placeholder="e.g. 09:00 or MORNING">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (Required)</label>
+                            <input type="text" id="desc-day3" class="form-input" placeholder="e.g. Columbia Road Flower Market">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Details (Optional)</label>
+                            <textarea id="details-day3" class="form-textarea" placeholder="Additional notes, address, booking info..."></textarea>
+                        </div>
+                        <div class="form-buttons">
+                            <button class="btn-save" onclick="submitActivity('day3')">SAVE</button>
+                            <button class="btn-cancel" onclick="toggleActivityForm('day3')">CANCEL</button>
+                        </div>
+                    </div>
+                    
+                    <div class="nested-accordion-header" onclick="toggleNestedAccordion('day3-suggestions')" style="margin-top: 1.5rem;">
+                        <span class="nested-title">💡 IDEAS FOR ACTIVITY</span>
+                        <span class="nested-icon">▸</span>
+                    </div>
+                    <div id="day3-suggestions" class="nested-accordion-content">
+                        <div class="nested-inner">
+                            <div style="padding: 1rem; background: #fff3cd; border-left: 3px solid #f59e0b;">
+                                <strong>MORNING OPTIONS:</strong><br>
+                                • <strong>Columbia Road Flower Market</strong> - Sundays 8am-3pm (12 min walk!)<br>
+                                • <strong>Brick Lane Markets</strong> - Sunday Upmarket 10am-6pm (5 min walk)<br>
+                                • <strong>Old Spitalfields</strong> - Lunar New Year celebrations with lion dances<br><br>
+                                <strong>ALTERNATIVE AREAS:</strong><br>
+                                • <strong>Camden Market</strong> - Massive alternative market (20 min Tube)<br>
+                                • <strong>Brixton</strong> - Multicultural markets & live music (30 min Tube)<br>
+                                • <strong>Peckham</strong> - Rooftop bars & art scene (30 min)<br><br>
+                                ⭐ <strong>BEST BET:</strong> Stay local! Columbia Road + Brick Lane perfect before 16:30 match
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -602,9 +951,9 @@
                     <div class="weather-box" id="weather-day4">Loading weather...</div>
 
                     <ul>
-                        <li><strong>MORNING</strong> — Check out citizenM Shoreditch</li>
+                        <li><strong>MORNING (UK Time)</strong> — Check out citizenM Shoreditch</li>
                         <li>
-                            <strong>~11:00</strong> — Train to Liverpool (2.5 hrs)
+                            <strong>~11:00 UK Time</strong> — Train to Liverpool (2.5 hrs)
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-train')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">🚄 TRAIN DETAILS</span>
                                 <span class="nested-icon">▸</span>
@@ -621,9 +970,9 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>~13:30</strong> — Arrive Liverpool Lime Street</li>
+                        <li><strong>~13:30 UK Time</strong> — Arrive Liverpool Lime Street</li>
                         <li>
-                            <strong>AFTERNOON</strong> — Check-in Pullman, explore Albert Dock
+                            <strong>AFTERNOON (UK Time)</strong> — Check-in Pullman, explore Albert Dock
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-hotel')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">🏨 HOTEL DETAILS</span>
                                 <span class="nested-icon">▸</span>
@@ -650,9 +999,9 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>19:00</strong> — Head to stadium area</li>
+                        <li><strong>19:00 UK Time</strong> — Head to stadium area</li>
                         <li>
-                            <strong>20:00</strong> — ⚽ KICK OFF
+                            <strong>20:00 UK Time</strong> — ⚽ KICK OFF
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-match')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">⚽ MATCH DETAILS</span>
                                 <span class="nested-icon">▸</span>
@@ -677,8 +1026,51 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>NIGHT</strong> — Return to Pullman Liverpool</li>
+                        <li><strong>NIGHT (UK Time)</strong> — Return to Pullman Liverpool</li>
                     </ul>
+                    
+                    <!-- Custom Activities Container -->
+                    <div id="activities-day4"></div>
+                    
+                    <!-- Add Activity Button & Form -->
+                    <button class="add-activity-btn" onclick="toggleActivityForm('day4')">+ ADD ACTIVITY</button>
+                    <div id="form-day4" class="activity-form">
+                        <div class="form-group">
+                            <label class="form-label">Time (Required)</label>
+                            <input type="text" id="time-day4" class="form-input" placeholder="e.g. 14:00 or AFTERNOON">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (Required)</label>
+                            <input type="text" id="desc-day4" class="form-input" placeholder="e.g. Visit The Beatles Story Museum">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Details (Optional)</label>
+                            <textarea id="details-day4" class="form-textarea" placeholder="Additional notes, address, booking info..."></textarea>
+                        </div>
+                        <div class="form-buttons">
+                            <button class="btn-save" onclick="submitActivity('day4')">SAVE</button>
+                            <button class="btn-cancel" onclick="toggleActivityForm('day4')">CANCEL</button>
+                        </div>
+                    </div>
+                    
+                    <div class="nested-accordion-header" onclick="toggleNestedAccordion('day4-suggestions')" style="margin-top: 1.5rem;">
+                        <span class="nested-title">💡 IDEAS FOR ACTIVITY</span>
+                        <span class="nested-icon">▸</span>
+                    </div>
+                    <div id="day4-suggestions" class="nested-accordion-content">
+                        <div class="nested-inner">
+                            <div style="padding: 1rem; background: #fff3cd; border-left: 3px solid #f59e0b;">
+                                <strong>AFTERNOON EXPLORING:</strong><br>
+                                • <strong>Albert Dock</strong> - Waterfront complex with museums & restaurants<br>
+                                • <strong>The Beatles Story</strong> - Museum celebrating the Fab Four<br>
+                                • <strong>Cavern Quarter</strong> - Legendary music venues & Beatles sites<br>
+                                • <strong>Liverpool ONE</strong> - Shopping district<br>
+                                • <strong>Baltic Triangle</strong> - Hipster area with street art & breweries<br><br>
+                                <strong>PRE-MATCH:</strong><br>
+                                • Head to stadium area by 19:00 for atmosphere
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -697,9 +1089,9 @@
                     <div class="weather-box" id="weather-day5">Loading weather...</div>
 
                     <ul>
-                        <li><strong>MORNING</strong> — Check out Pullman Liverpool</li>
+                        <li><strong>MORNING (UK Time)</strong> — Check out Pullman Liverpool</li>
                         <li>
-                            <strong>~11:00</strong> — Train to London (2.5 hrs)
+                            <strong>~11:00 UK Time</strong> — Train to London (2.5 hrs)
                             <div class="nested-accordion-header" onclick="toggleNestedAccordion('day5-train')" style="margin-top: 0.5rem;">
                                 <span class="nested-title">🚄 TRAIN DETAILS</span>
                                 <span class="nested-icon">▸</span>
@@ -717,11 +1109,51 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>~13:30</strong> — Arrive London Euston</li>
-                        <li><strong>~14:30</strong> — Arrive Heathrow (buffer time)</li>
-                        <li><strong>16:10</strong> — ✈️ Depart London for Tel Aviv</li>
-                        <li><strong>22:45</strong> — Arrive Tel Aviv Yafo</li>
+                        <li><strong>~13:30 UK Time</strong> — Arrive London Euston</li>
+                        <li><strong>~14:30 UK Time</strong> — Arrive Heathrow (buffer time)</li>
+                        <li><strong>16:10 UK Time</strong> — ✈️ Depart London for Tel Aviv</li>
+                        <li><strong>22:45 Israel Time</strong> — Arrive Tel Aviv Yafo</li>
                     </ul>
+                    
+                    <!-- Custom Activities Container -->
+                    <div id="activities-day5"></div>
+                    
+                    <!-- Add Activity Button & Form -->
+                    <button class="add-activity-btn" onclick="toggleActivityForm('day5')">+ ADD ACTIVITY</button>
+                    <div id="form-day5" class="activity-form">
+                        <div class="form-group">
+                            <label class="form-label">Time (Required)</label>
+                            <input type="text" id="time-day5" class="form-input" placeholder="e.g. 09:00 or MORNING">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (Required)</label>
+                            <input type="text" id="desc-day5" class="form-input" placeholder="e.g. Quick breakfast before train">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Details (Optional)</label>
+                            <textarea id="details-day5" class="form-textarea" placeholder="Additional notes, address, booking info..."></textarea>
+                        </div>
+                        <div class="form-buttons">
+                            <button class="btn-save" onclick="submitActivity('day5')">SAVE</button>
+                            <button class="btn-cancel" onclick="toggleActivityForm('day5')">CANCEL</button>
+                        </div>
+                    </div>
+                    
+                    <div class="nested-accordion-header" onclick="toggleNestedAccordion('day5-suggestions')" style="margin-top: 1.5rem;">
+                        <span class="nested-title">💡 IDEAS FOR ACTIVITY</span>
+                        <span class="nested-icon">▸</span>
+                    </div>
+                    <div id="day5-suggestions" class="nested-accordion-content">
+                        <div class="nested-inner">
+                            <div style="padding: 1rem; background: #fff3cd; border-left: 3px solid #f59e0b;">
+                                <strong>IF TIME BEFORE TRAIN:</strong><br>
+                                • <strong>Quick breakfast</strong> at Pullman or nearby café<br>
+                                • <strong>Albert Dock walk</strong> - Last look at the waterfront<br>
+                                • <strong>Liverpool ONE</strong> - Quick shopping if needed<br><br>
+                                ⚠️ <strong>PRIORITY:</strong> Don't miss your train! Allow buffer time for 16:10 flight
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
