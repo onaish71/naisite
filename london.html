@@ -5,112 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>London & Liverpool - Match Weekend 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <script>
-        // JSONBin.io configuration - free public JSON storage
-        const JSONBIN_BIN_ID = '67a9c8b1ad19ca34f8f04e2a'; // This will be created on first use
-        const JSONBIN_API = 'https://api.jsonbin.io/v3';
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDqMLmu-NVhB9Vr-4W-H0vjMgLWd0RVgl0",
+            authDomain: "london-trip-planner.firebaseapp.com",
+            databaseURL: "https://london-trip-planner-default-rtdb.firebaseio.com",
+            projectId: "london-trip-planner",
+            storageBucket: "london-trip-planner.firebasestorage.app",
+            messagingSenderId: "23444799991",
+            appId: "1:23444799991:web:43e08335e40343c4bf6ef2"
+        };
         
-        // Activity Management Functions with JSONBin.io
+        // Initialize Firebase
+        let database;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            // Fallback to localStorage if Firebase fails
+            database = null;
+        }
+        
+        // Activity Management Functions with Firebase
         async function loadActivities(dayId) {
+            if (!database) {
+                // Fallback to localStorage
+                const stored = localStorage.getItem(`activities-${dayId}`);
+                return stored ? JSON.parse(stored) : [];
+            }
+            
             try {
-                const response = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}/latest`, {
-                    headers: {
-                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
-                    }
-                });
-                
-                if (!response.ok) {
-                    // Bin doesn't exist yet, return empty
-                    return [];
-                }
-                
-                const data = await response.json();
-                const allActivities = data.record || {};
-                return allActivities[dayId] || [];
+                const snapshot = await database.ref(`activities/${dayId}`).once('value');
+                const data = snapshot.val();
+                return data ? Object.values(data) : [];
             } catch (error) {
-                console.log('No activities found for', dayId, error);
+                console.log('Error loading activities:', error);
                 return [];
             }
         }
         
         async function saveActivity(dayId, activity) {
+            const newActivity = {
+                id: Date.now(),
+                ...activity
+            };
+            
+            if (!database) {
+                // Fallback to localStorage
+                const stored = localStorage.getItem(`activities-${dayId}`);
+                const activities = stored ? JSON.parse(stored) : [];
+                activities.push(newActivity);
+                localStorage.setItem(`activities-${dayId}`, JSON.stringify(activities));
+                await renderActivities(dayId);
+                return;
+            }
+            
             try {
-                // Load all days' activities
-                const response = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}/latest`, {
-                    headers: {
-                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
-                    }
-                });
-                
-                let allActivities = {};
-                if (response.ok) {
-                    const data = await response.json();
-                    allActivities = data.record || {};
-                }
-                
-                // Add new activity to this day
-                if (!allActivities[dayId]) {
-                    allActivities[dayId] = [];
-                }
-                allActivities[dayId].push({
-                    id: Date.now(),
-                    ...activity
-                });
-                
-                // Save back to JSONBin
-                const saveResponse = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
-                    },
-                    body: JSON.stringify(allActivities)
-                });
-                
-                if (!saveResponse.ok) {
-                    throw new Error('Failed to save to server');
-                }
-                
+                await database.ref(`activities/${dayId}/${newActivity.id}`).set(newActivity);
                 await renderActivities(dayId);
             } catch (error) {
                 console.error('Error saving activity:', error);
-                alert('Failed to save activity: ' + error.message + '\nPlease check your internet connection.');
+                alert('Failed to save activity: ' + error.message);
             }
         }
         
         async function deleteActivity(dayId, activityId) {
+            if (!database) {
+                // Fallback to localStorage
+                const stored = localStorage.getItem(`activities-${dayId}`);
+                const activities = stored ? JSON.parse(stored) : [];
+                const filtered = activities.filter(a => a.id !== activityId);
+                localStorage.setItem(`activities-${dayId}`, JSON.stringify(filtered));
+                await renderActivities(dayId);
+                return;
+            }
+            
             try {
-                // Load all days' activities
-                const response = await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}/latest`, {
-                    headers: {
-                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
-                    }
-                });
-                
-                if (!response.ok) return;
-                
-                const data = await response.json();
-                const allActivities = data.record || {};
-                
-                // Remove the activity
-                if (allActivities[dayId]) {
-                    allActivities[dayId] = allActivities[dayId].filter(a => a.id !== activityId);
-                }
-                
-                // Save back
-                await fetch(`${JSONBIN_API}/b/${JSONBIN_BIN_ID}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': '$2a$10$8FvVQqF8K3xQYZN4jYvF7.RZYQFhXYzN4K8jYvF7RZYQFhXYzN4K'
-                    },
-                    body: JSON.stringify(allActivities)
-                });
-                
+                await database.ref(`activities/${dayId}/${activityId}`).remove();
                 await renderActivities(dayId);
             } catch (error) {
                 console.error('Error deleting activity:', error);
-                alert('Failed to delete activity. Please check your internet connection.');
+                alert('Failed to delete activity.');
             }
         }
         
@@ -125,7 +107,15 @@
                 return;
             }
             
-            container.innerHTML = activities.map(activity => `
+            // Sort by time if possible
+            const sorted = activities.sort((a, b) => {
+                // Try to parse time for sorting
+                const timeA = a.time.toLowerCase();
+                const timeB = b.time.toLowerCase();
+                return timeA.localeCompare(timeB);
+            });
+            
+            container.innerHTML = sorted.map(activity => `
                 <div class="custom-activity">
                     <button class="activity-delete" onclick="deleteActivity('${dayId}', ${activity.id})">✕</button>
                     <div><span class="activity-time">${activity.time}</span> — ${activity.description}</div>
@@ -158,17 +148,19 @@
                 return;
             }
             
-            // Show loading state
-            const saveBtn = event.target;
-            const originalText = saveBtn.textContent;
-            saveBtn.textContent = 'SAVING...';
-            saveBtn.disabled = true;
-            
             await saveActivity(dayId, { time, description, details });
-            
-            saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
             toggleActivityForm(dayId);
+        }
+        
+        // Set up real-time listeners for each day
+        function setupRealtimeListeners() {
+            if (!database) return;
+            
+            ['day1', 'day2', 'day3', 'day4', 'day5'].forEach(dayId => {
+                database.ref(`activities/${dayId}`).on('value', (snapshot) => {
+                    renderActivities(dayId);
+                });
+            });
         }
         
         // Load all activities on page load
@@ -176,6 +168,9 @@
             ['day1', 'day2', 'day3', 'day4', 'day5'].forEach(dayId => {
                 renderActivities(dayId);
             });
+            
+            // Set up real-time sync
+            setupRealtimeListeners();
         });
 
         // Live weather fetching
