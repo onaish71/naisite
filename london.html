@@ -107,21 +107,152 @@
                 return;
             }
             
-            // Sort by time if possible
-            const sorted = activities.sort((a, b) => {
-                // Try to parse time for sorting
-                const timeA = a.time.toLowerCase();
-                const timeB = b.time.toLowerCase();
-                return timeA.localeCompare(timeB);
-            });
-            
-            container.innerHTML = sorted.map(activity => `
-                <div class="custom-activity">
+            container.innerHTML = activities.map((activity, index) => `
+                <li class="custom-activity" draggable="true" data-id="${activity.id}" data-day="${dayId}" data-index="${index}">
                     <button class="activity-delete" onclick="deleteActivity('${dayId}', ${activity.id})">✕</button>
                     <div><span class="activity-time">${activity.time}</span> — ${activity.description}</div>
                     ${activity.details ? `<div class="activity-details">${activity.details}</div>` : ''}
-                </div>
+                </li>
             `).join('');
+            
+            // Add drag and drop event listeners
+            setupDragAndDrop(dayId);
+        }
+        
+        function setupDragAndDrop(dayId) {
+            const activities = document.querySelectorAll(`[data-day="${dayId}"]`);
+            
+            activities.forEach(activity => {
+                activity.addEventListener('dragstart', handleDragStart);
+                activity.addEventListener('dragend', handleDragEnd);
+                activity.addEventListener('dragover', handleDragOver);
+                activity.addEventListener('drop', handleDrop);
+                activity.addEventListener('dragleave', handleDragLeave);
+            });
+            
+            // Make schedule list items drop zones
+            const scheduleItems = document.querySelectorAll(`#${dayId}-content ul li:not(.custom-activity)`);
+            scheduleItems.forEach(item => {
+                if (!item.hasAttribute('data-drop-setup')) {
+                    item.setAttribute('data-drop-setup', 'true');
+                    item.setAttribute('data-day', dayId);
+                    item.addEventListener('dragover', handleDragOver);
+                    item.addEventListener('drop', handleDropInSchedule);
+                    item.addEventListener('dragleave', handleDragLeave);
+                }
+            });
+        }
+        
+        let draggedElement = null;
+        
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            // Remove all drag-over classes
+            document.querySelectorAll('.drag-over').forEach(el => {
+                el.classList.remove('drag-over');
+            });
+        }
+        
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            
+            e.dataTransfer.dropEffect = 'move';
+            
+            if (this !== draggedElement) {
+                this.classList.add('drag-over');
+            }
+            
+            return false;
+        }
+        
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+        
+        async function handleDropInSchedule(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            this.classList.remove('drag-over');
+            
+            if (!draggedElement) return false;
+            
+            // Insert the dragged element after this schedule item
+            const dayId = this.getAttribute('data-day');
+            const draggedId = parseInt(draggedElement.getAttribute('data-id'));
+            
+            // Move the custom activity visually into the schedule
+            this.insertAdjacentElement('afterend', draggedElement);
+            
+            return false;
+        }
+        
+        async function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            this.classList.remove('drag-over');
+            
+            if (draggedElement !== this) {
+                const dayId = this.getAttribute('data-day');
+                const draggedId = parseInt(draggedElement.getAttribute('data-id'));
+                const droppedId = parseInt(this.getAttribute('data-id'));
+                
+                // Reorder activities
+                await reorderActivities(dayId, draggedId, droppedId);
+            }
+            
+            return false;
+        }
+        
+        async function reorderActivities(dayId, draggedId, droppedId) {
+            const activities = await loadActivities(dayId);
+            
+            // Find indices
+            const draggedIndex = activities.findIndex(a => a.id === draggedId);
+            const droppedIndex = activities.findIndex(a => a.id === droppedId);
+            
+            if (draggedIndex === -1 || droppedIndex === -1) return;
+            
+            // Reorder array
+            const [removed] = activities.splice(draggedIndex, 1);
+            activities.splice(droppedIndex, 0, removed);
+            
+            // Save back to Firebase
+            if (!database) {
+                // Fallback to localStorage
+                localStorage.setItem(`activities-${dayId}`, JSON.stringify(activities));
+                await renderActivities(dayId);
+                return;
+            }
+            
+            try {
+                // Clear existing activities
+                await database.ref(`activities/${dayId}`).remove();
+                
+                // Save reordered activities
+                const updates = {};
+                activities.forEach(activity => {
+                    updates[activity.id] = activity;
+                });
+                
+                await database.ref(`activities/${dayId}`).update(updates);
+                await renderActivities(dayId);
+            } catch (error) {
+                console.error('Error reordering activities:', error);
+            }
         }
         
         function toggleActivityForm(dayId) {
@@ -548,6 +679,32 @@
             padding: 1rem 3rem 1rem 1rem;
             margin: 0.5rem 0;
             position: relative;
+            cursor: move;
+            transition: all 0.2s ease;
+        }
+        
+        .custom-activity:hover {
+            background: #fff5b3;
+            transform: translateX(3px);
+        }
+        
+        .custom-activity.dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+        }
+        
+        .custom-activity.drag-over {
+            border-style: solid;
+            border-color: #000;
+            background: #ffeb9c;
+        }
+        
+        /* Drag-over effect for static schedule items */
+        ul li.drag-over {
+            background: #fff5b3;
+            padding: 0.5rem;
+            border-left: 3px solid #ff0000;
+            margin-left: -0.5rem;
         }
         
         .activity-delete {
@@ -727,7 +884,26 @@
                                 </div>
                             </div>
                         </li>
-                        <li><strong>EVENING</strong> — Explore Shoreditch area</li>
+                        <li><strong>20:00 UK Time</strong> — 🍝 Dinner at Via Emilia by Food Roots
+                            <div class="nested-accordion-header" onclick="toggleNestedAccordion('day1-dinner')" style="margin-top: 0.5rem;">
+                                <span class="nested-title">🍽️ RESTAURANT DETAILS</span>
+                                <span class="nested-icon">▸</span>
+                            </div>
+                            <div id="day1-dinner" class="nested-accordion-content">
+                                <div class="nested-inner">
+                                    <div class="info-block">
+                                        <div class="info-text">
+                                            <strong>VIA EMILIA BY FOOD ROOTS - SHOREDITCH</strong><br>
+                                            ✅ Reservation: Friday, Feb 20 at 8:00 PM<br>
+                                            Small Northern Italian eatery near Hoxton Square<br>
+                                            Specialties: Emilia-Romagna classics, fresh pasta, cured meats<br>
+                                            Atmosphere: Cosy & intimate<br><br>
+                                            📍 Near Hoxton Square (short walk from hotel)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
                     </ul>
                     
                     <!-- Custom Activities Container -->
