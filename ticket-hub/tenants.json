@@ -1,0 +1,5 @@
+[
+  { "id": "tenant-alpha", "name": "Alpha Corp",   "apiKey": "tk-alpha-a1b2c3d4e5f6" },
+  { "id": "tenant-beta",  "name": "Beta Systems", "apiKey": "tk-beta-f6e5d4c3b2a1"  },
+  { "id": "tenant-gamma", "name": "Gamma Tech",   "apiKey": "tk-gamma-1a2b3c4d5e6f" }
+]

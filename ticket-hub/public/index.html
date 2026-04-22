@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TICKET HUB — Alert Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier Prime', monospace; background: #f0f0f0; color: #000; line-height: 1.4; }
+        .header { background: #000; color: #fff; padding: 1.25rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 6px solid #ff0000; }
+        .logo { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 4px; }
+        .logo span { color: #ff0000; }
+        .header-right { display: flex; align-items: center; gap: 1rem; }
+        .last-updated { font-size: 0.8rem; color: #aaa; }
+        .btn { border: 2px solid currentColor; padding: 0.4rem 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 2px; cursor: pointer; transition: all 0.2s; }
+        .btn-refresh { background: #ff0000; color: #fff; border-color: #fff; }
+        .btn-refresh:hover { background: #fff; color: #ff0000; border-color: #ff0000; }
+        .btn-save { background: #000; color: #fff; border-color: #000; }
+        .btn-save:hover { background: #ff0000; border-color: #ff0000; }
+        .stats-bar { background: #111; padding: 1rem 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        .stat-card { background: #1c1c1c; border: 2px solid #333; padding: 0.6rem 1.2rem; flex: 1; min-width: 100px; text-align: center; }
+        .stat-card.s-critical { border-color: #ff0000; } .stat-card.s-high { border-color: #ff6600; }
+        .stat-card.s-open { border-color: #cc0000; } .stat-card.s-progress { border-color: #3399ff; } .stat-card.s-resolved { border-color: #00aa44; }
+        .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: #fff; line-height: 1; }
+        .stat-card.s-critical .stat-value { color: #ff0000; } .stat-card.s-high .stat-value { color: #ff6600; }
+        .stat-card.s-progress .stat-value { color: #3399ff; } .stat-card.s-resolved .stat-value { color: #00aa44; }
+        .stat-label { font-size: 0.7rem; color: #777; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem; }
+        .filters { background: #fff; border-bottom: 3px solid #000; padding: 0.75rem 2rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+        .filter-label { font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; letter-spacing: 1px; color: #888; }
+        .filter-select, .filter-search { border: 2px solid #000; padding: 0.35rem 0.6rem; font-family: 'Courier Prime', monospace; font-size: 0.85rem; background: #fff; cursor: pointer; }
+        .filter-search { flex: 1; min-width: 180px; cursor: text; }
+        .main { padding: 1.5rem 2rem; max-width: 1500px; margin: 0 auto; }
+        .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 2px; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem; }
+        .alert-count { font-family: 'Courier Prime', monospace; font-size: 0.9rem; background: #000; color: #fff; padding: 0.15rem 0.6rem; }
+        .alerts-table { width: 100%; border-collapse: collapse; border: 3px solid #000; background: #fff; }
+        .alerts-table th { background: #000; color: #fff; padding: 0.6rem 1rem; text-align: left; font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; letter-spacing: 2px; white-space: nowrap; }
+        .alerts-table td { padding: 0.65rem 1rem; border-bottom: 1px solid #e0e0e0; vertical-align: middle; font-size: 0.88rem; }
+        .alerts-table tr.data-row:hover td { background: #f7f7f7; cursor: pointer; }
+        .alerts-table tr.data-row.is-expanded td { background: #f0f0f0; }
+        .alerts-table tr[data-sev="critical"] td:first-child { border-left: 4px solid #ff0000; }
+        .alerts-table tr[data-sev="high"] td:first-child { border-left: 4px solid #ff6600; }
+        .alerts-table tr[data-sev="medium"] td:first-child { border-left: 4px solid #ffcc00; }
+        .alerts-table tr[data-sev="low"] td:first-child { border-left: 4px solid #00aa44; }
+        .badge { display: inline-block; padding: 0.15rem 0.5rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.8rem; letter-spacing: 1px; border: 2px solid #000; white-space: nowrap; }
+        .badge-critical { background: #ff0000; color: #fff; } .badge-high { background: #ff6600; color: #fff; }
+        .badge-medium { background: #ffcc00; color: #000; } .badge-low { background: #00aa44; color: #fff; }
+        .badge-open { background: #fff; color: #000; } .badge-in-progress { background: #3399ff; color: #fff; }
+        .badge-resolved { background: #00aa44; color: #fff; } .badge-closed { background: #999; color: #fff; }
+        .alert-id { font-family: 'Courier Prime', monospace; font-size: 0.78rem; color: #999; }
+        .time-col { color: #666; font-size: 0.82rem; white-space: nowrap; }
+        .btn-expand { background: none; border: 2px solid #000; padding: 0.15rem 0.5rem; cursor: pointer; font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; transition: all 0.15s; }
+        .btn-expand:hover { background: #000; color: #fff; }
+        .detail-row td { background: #f9f9f9 !important; padding: 0 !important; border-bottom: 3px solid #000 !important; }
+        .detail-content { padding: 1.25rem 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+        .detail-section { border: 2px solid #000; padding: 1rem; background: #fff; }
+        .detail-section-title { font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 2px; color: #ff0000; margin-bottom: 0.75rem; border-bottom: 2px solid #eee; padding-bottom: 0.4rem; }
+        .detail-field { margin-bottom: 0.6rem; font-size: 0.88rem; }
+        .detail-field-label { font-weight: 700; color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        pre.meta { font-size: 0.78rem; background: #f0f0f0; padding: 0.5rem; overflow-x: auto; border: 1px solid #ddd; margin-top: 0.25rem; }
+        .update-form { display: flex; flex-direction: column; gap: 0.65rem; }
+        .form-row { display: flex; flex-direction: column; gap: 0.2rem; }
+        .form-row label { font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem; letter-spacing: 1px; }
+        .form-row select, .form-row input, .form-row textarea { border: 2px solid #000; padding: 0.35rem 0.6rem; font-family: 'Courier Prime', monospace; font-size: 0.88rem; }
+        .form-row textarea { min-height: 70px; resize: vertical; }
+        .state-row td { text-align: center; padding: 3rem; font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 2px; color: #aaa; }
+        .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #000; color: #fff; padding: 0.75rem 1.25rem; border: 3px solid #ff0000; font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 0.95rem; opacity: 0; transform: translateY(0.5rem); transition: all 0.25s; pointer-events: none; z-index: 999; }
+        .toast.show { opacity: 1; transform: translateY(0); } .toast.ok { border-color: #00aa44; } .toast.err { border-color: #ff0000; }
+        @media (max-width: 900px) { .detail-content { grid-template-columns: 1fr; } .stat-card { min-width: calc(33% - 0.5rem); } .main { padding: 1rem; } }
+        @media (max-width: 600px) { .filters { flex-direction: column; align-items: stretch; } .stat-card { min-width: calc(50% - 0.4rem); } }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="logo">TICKET<span>HUB</span></div>
+    <div class="header-right">
+        <span class="last-updated" id="lastUpdated">—</span>
+        <button class="btn btn-refresh" onclick="loadAlerts()">↻ REFRESH</button>
+    </div>
+</div>
+<div class="stats-bar">
+    <div class="stat-card s-open"><div class="stat-value" id="sTot">—</div><div class="stat-label">Total</div></div>
+    <div class="stat-card s-open"><div class="stat-value" id="sOpen">—</div><div class="stat-label">Open</div></div>
+    <div class="stat-card s-progress"><div class="stat-value" id="sProg">—</div><div class="stat-label">In Progress</div></div>
+    <div class="stat-card s-resolved"><div class="stat-value" id="sRes">—</div><div class="stat-label">Resolved</div></div>
+    <div class="stat-card s-critical"><div class="stat-value" id="sCrit">—</div><div class="stat-label">Critical</div></div>
+    <div class="stat-card s-high"><div class="stat-value" id="sHigh">—</div><div class="stat-label">High</div></div>
+</div>
+<div class="filters">
+    <span class="filter-label">STATUS:</span>
+    <select class="filter-select" id="fStatus" onchange="applyFilters()">
+        <option value="">All</option><option value="open">Open</option><option value="in-progress">In Progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+    </select>
+    <span class="filter-label">SEVERITY:</span>
+    <select class="filter-select" id="fSev" onchange="applyFilters()">
+        <option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+    </select>
+    <span class="filter-label">TENANT:</span>
+    <select class="filter-select" id="fTenant" onchange="applyFilters()"><option value="">All</option></select>
+    <input type="text" class="filter-search" id="fSearch" placeholder="Search summary or tenant..." oninput="applyFilters()">
+</div>
+<div class="main">
+    <div class="section-title">ALERTS <span class="alert-count" id="alertCount">0</span></div>
+    <table class="alerts-table">
+        <thead><tr><th>SEVERITY</th><th>ID</th><th>TENANT</th><th>SUMMARY</th><th>STATUS</th><th>RECEIVED</th><th></th></tr></thead>
+        <tbody id="alertsBody"><tr class="state-row"><td colspan="7">LOADING ALERTS...</td></tr></tbody>
+    </table>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+    let allAlerts = [], expandedId = null;
+    function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    function timeAgo(iso){const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return 'just now';if(s<3600)return `${Math.floor(s/60)}m ago`;if(s<86400)return `${Math.floor(s/3600)}h ago`;return `${Math.floor(s/86400)}d ago`;}
+    function fmtDate(iso){return new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+    function toast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${type} show`;setTimeout(()=>el.className='toast',3000);}
+    async function loadStats(){try{const d=await fetch('/api/stats').then(r=>r.json());document.getElementById('sTot').textContent=d.total;document.getElementById('sOpen').textContent=d.open;document.getElementById('sProg').textContent=d.inProgress;document.getElementById('sRes').textContent=d.resolved;document.getElementById('sCrit').textContent=d.critical;document.getElementById('sHigh').textContent=d.high;}catch{}}
+    async function loadTenants(){try{const t=await fetch('/api/tenants').then(r=>r.json());const s=document.getElementById('fTenant');t.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;s.appendChild(o);});}catch{}}
+    async function loadAlerts(){document.getElementById('lastUpdated').textContent='Refreshing...';try{allAlerts=await fetch('/api/alerts?limit=500').then(r=>r.json());await loadStats();applyFilters();document.getElementById('lastUpdated').textContent=`Updated: ${new Date().toLocaleTimeString()}`;}catch{document.getElementById('alertsBody').innerHTML='<tr class="state-row"><td colspan="7">FAILED TO LOAD ALERTS</td></tr>';document.getElementById('lastUpdated').textContent='Error';}}
+    function applyFilters(){const status=document.getElementById('fStatus').value,severity=document.getElementById('fSev').value,tenant=document.getElementById('fTenant').value,search=document.getElementById('fSearch').value.toLowerCase();renderAlerts(allAlerts.filter(a=>{if(status&&a.status!==status)return false;if(severity&&a.severity!==severity)return false;if(tenant&&a.tenantId!==tenant)return false;if(search&&!a.summary.toLowerCase().includes(search)&&!a.tenantName.toLowerCase().includes(search))return false;return true;}));}
+    function renderAlerts(alerts){document.getElementById('alertCount').textContent=alerts.length;const tbody=document.getElementById('alertsBody');if(!alerts.length){tbody.innerHTML='<tr class="state-row"><td colspan="7">NO ALERTS FOUND</td></tr>';return;}tbody.innerHTML=alerts.map(a=>{const exp=expandedId===a.id;return `<tr class="data-row${exp?' is-expanded':''}" data-sev="${a.severity}" onclick="toggleExpand('${a.id}')"><td><span class="badge badge-${a.severity}">${a.severity.toUpperCase()}</span></td><td><span class="alert-id">${a.id.slice(0,8)}</span></td><td><strong>${esc(a.tenantName)}</strong></td><td>${esc(a.summary)}</td><td><span class="badge badge-${a.status}">${a.status.replace('-',' ').toUpperCase()}</span></td><td class="time-col" title="${fmtDate(a.receivedAt)}">${timeAgo(a.receivedAt)}</td><td onclick="event.stopPropagation()"><button class="btn-expand" onclick="toggleExpand('${a.id}')">${exp?'▲':'▼'}</button></td></tr>${exp?renderDetailRow(a):''}`;}).join('');}
+    function renderDetailRow(a){return `<tr class="detail-row"><td colspan="7"><div class="detail-content"><div class="detail-section"><div class="detail-section-title">ALERT DETAILS</div><div class="detail-field"><div class="detail-field-label">Full ID</div><div style="font-size:0.78rem;color:#666;font-family:monospace">${a.id}</div></div><div class="detail-field"><div class="detail-field-label">Received</div><div>${fmtDate(a.receivedAt)}</div></div><div class="detail-field"><div class="detail-field-label">Last Updated</div><div>${fmtDate(a.updatedAt)}</div></div>${a.description?`<div class="detail-field"><div class="detail-field-label">Description</div><div>${esc(a.description)}</div></div>`:''}${a.source?`<div class="detail-field"><div class="detail-field-label">Source</div><div>${esc(a.source)}</div></div>`:''}${a.assignedTo?`<div class="detail-field"><div class="detail-field-label">Assigned To</div><div>${esc(a.assignedTo)}</div></div>`:''}${a.notes?`<div class="detail-field"><div class="detail-field-label">Notes</div><div>${esc(a.notes)}</div></div>`:''}${Object.keys(a.metadata||{}).length?`<div class="detail-field"><div class="detail-field-label">Metadata</div><pre class="meta">${esc(JSON.stringify(a.metadata,null,2))}</pre></div>`:''}</div><div class="detail-section"><div class="detail-section-title">UPDATE ALERT</div><div class="update-form" onclick="event.stopPropagation()"><div class="form-row"><label>STATUS</label><select id="us-${a.id}">${['open','in-progress','resolved','closed'].map(s=>`<option value="${s}"${a.status===s?' selected':''}>${s.replace('-',' ').toUpperCase()}</option>`).join('')}</select></div><div class="form-row"><label>ASSIGNED TO</label><input type="text" id="ua-${a.id}" value="${esc(a.assignedTo||'')}" placeholder="analyst@company.com"></div><div class="form-row"><label>NOTES</label><textarea id="un-${a.id}" placeholder="Investigation notes...">${esc(a.notes||'')}</textarea></div><button class="btn btn-save" onclick="updateAlert('${a.id}')">SAVE CHANGES</button></div></div></div></td></tr>`;}
+    function toggleExpand(id){expandedId=expandedId===id?null:id;applyFilters();}
+    async function updateAlert(id){const status=document.getElementById(`us-${id}`).value,assignedTo=document.getElementById(`ua-${id}`).value.trim(),notes=document.getElementById(`un-${id}`).value.trim();try{const res=await fetch(`/api/alerts/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,assignedTo,notes})});if(!res.ok)throw new Error();const updated=await res.json();const idx=allAlerts.findIndex(a=>a.id===id);if(idx!==-1)allAlerts[idx]=updated;await loadStats();applyFilters();toast('ALERT UPDATED','ok');}catch{toast('UPDATE FAILED','err');}}
+    setInterval(loadAlerts,30000);
+    loadTenants();
+    loadAlerts();
+</script>
+</body>
+</html>
