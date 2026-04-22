@@ -1,0 +1,4 @@
+node_modules/
+alerts.json
+.git/
+.gitignore
