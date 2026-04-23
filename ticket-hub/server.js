@@ -39,12 +39,14 @@ app.post('/api/alerts', authTenant, async (req, res) => {
     if (!summary) return res.status(400).json({ error: 'summary is required' });
     if (severity && !VALID_SEVERITIES.includes(severity))
         return res.status(400).json({ error: `severity must be one of: ${VALID_SEVERITIES.join(', ')}` });
+    const now = new Date().toISOString();
     const alert = {
         id: uuidv4(), tenantId: req.tenant.id, tenantName: req.tenant.name,
         summary, severity: severity || 'medium', description: description || '',
         source: source || '', metadata: metadata || {}, status: 'open',
-        receivedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        assignedTo: null, notes: ''
+        receivedAt: now, updatedAt: now,
+        assignedTo: null, notes: '',
+        history: [{ status: 'open', at: now }]
     };
     await ddb.send(new PutCommand({ TableName: TABLE, Item: alert }));
     res.status(201).json(alert);
@@ -74,7 +76,8 @@ app.patch('/api/alerts/:id', async (req, res) => {
     const check = await ddb.send(new GetCommand({ TableName: TABLE, Key: { id: req.params.id } }));
     if (!check.Item) return res.status(404).json({ error: 'Alert not found' });
 
-    const updates = { updatedAt: new Date().toISOString() };
+    const now = new Date().toISOString();
+    const updates = { updatedAt: now };
     if (status) updates.status = status;
     if (assignedTo !== undefined) updates.assignedTo = assignedTo;
     if (notes !== undefined) updates.notes = notes;
@@ -83,15 +86,41 @@ app.patch('/api/alerts/:id', async (req, res) => {
     const names = Object.fromEntries(Object.keys(updates).map((k, i) => [`#f${i}`, k]));
     const values = Object.fromEntries(Object.keys(updates).map((k, i) => [`:v${i}`, updates[k]]));
 
+    const historyEntry = status ? `, #hist = list_append(if_not_exists(#hist, :empty), :entry)` : '';
+    if (status) {
+        names['#hist'] = 'history';
+        values[':empty'] = [];
+        values[':entry'] = [{ status, at: now }];
+    }
+
     const result = await ddb.send(new UpdateCommand({
         TableName: TABLE,
         Key: { id: req.params.id },
-        UpdateExpression: `SET ${expr}`,
+        UpdateExpression: `SET ${expr}${historyEntry}`,
         ExpressionAttributeNames: names,
         ExpressionAttributeValues: values,
         ReturnValues: 'ALL_NEW'
     }));
     res.json(result.Attributes);
+});
+
+app.get('/api/alerts/:id/metrics', async (req, res) => {
+    const result = await ddb.send(new GetCommand({ TableName: TABLE, Key: { id: req.params.id } }));
+    if (!result.Item) return res.status(404).json({ error: 'Alert not found' });
+    const { history = [], receivedAt } = result.Item;
+    const metrics = history.map((entry, i) => {
+        const prev = i === 0 ? receivedAt : history[i - 1].at;
+        const diffMs = new Date(entry.at) - new Date(prev);
+        return {
+            status: entry.status,
+            at: entry.at,
+            timeFromPreviousMs: i === 0 ? 0 : diffMs,
+            timeFromPreviousMin: i === 0 ? 0 : Math.round(diffMs / 60000),
+            timeFromReceivedMs: new Date(entry.at) - new Date(receivedAt),
+            timeFromReceivedMin: Math.round((new Date(entry.at) - new Date(receivedAt)) / 60000)
+        };
+    });
+    res.json({ alertId: req.params.id, receivedAt, transitions: metrics });
 });
 
 app.get('/api/tenants', (req, res) => {
